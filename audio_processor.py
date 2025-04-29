@@ -19,12 +19,17 @@ class AudioProcessor:
         """加载音频文件列表
         
         Returns:
-            list: 音频文件路径列表
+            dict: 按类型分类的音频文件路径字典
         """
-        files = []
+        files = {'long': [], 'medium': [], 'min': []}
         for file in os.listdir(self.audio_dir):
-            if file.endswith('.wav'):
-                files.append(os.path.join(self.audio_dir, file))
+            if file.endswith('.WAV'):
+                if 'long' in file:
+                    files['long'].append(os.path.join(self.audio_dir, file))
+                elif 'medium' in file:
+                    files['medium'].append(os.path.join(self.audio_dir, file))
+                elif 'min' in file:
+                    files['min'].append(os.path.join(self.audio_dir, file))
         return files
     
     def list_source_files(self):
@@ -35,24 +40,29 @@ class AudioProcessor:
         """
         return [os.path.basename(file) for file in self.audio_files]
     
-    def synthesize(self, target_duration=None):
+    def synthesize(self, target_duration=None, type=None):
         """合成新的音频文件
         
         Args:
             target_duration: 目标音频长度(秒)，如果为None则随机生成3-5秒的音频
+            type: 音频类型，可选值为 'long'、'medium'、'min'，默认为 'long'
             
         Returns:
             str: 输出音频文件路径
         """
-        if not self.audio_files:
-            raise Exception("not found file")
+        # 验证并设置音频类型
+        valid_types = ['long', 'medium', 'min']
+        audio_type = type if type in valid_types else 'long'
+        
+        if not self.audio_files[audio_type]:
+            raise Exception(f"not found {audio_type} type audio files")
         
         # 如果没有指定目标时长，则随机生成3-5秒的音频
         if target_duration is None:
             target_duration = random.uniform(3, 8)
         
         # 随机选择音频文件并合成
-        combined = self._combine_audio_files(target_duration)
+        combined = self._combine_audio_files(target_duration, audio_type)
         
         # 生成唯一的输出文件名
         output_filename = f"synthesized_{uuid.uuid4().hex[:8]}.wav"
@@ -63,11 +73,12 @@ class AudioProcessor:
         
         return output_path
     
-    def _combine_audio_files(self, target_duration):
+    def _combine_audio_files(self, target_duration, audio_type):
         """组合多个音频文件以达到目标时长
         
         Args:
             target_duration: 目标音频长度(秒)
+            audio_type: 音频类型，'long'、'medium' 或 'min'
             
         Returns:
             AudioSegment: 合成的音频段
@@ -76,24 +87,30 @@ class AudioProcessor:
         combined = AudioSegment.silent(duration=0)
         current_duration = 0
         
-        # 随机打乱音频文件列表
-        random_files = random.sample(self.audio_files, len(self.audio_files))
+        # 获取指定类型的音频文件并随机打乱
+        audio_files = self.audio_files[audio_type]
+        random_files = random.sample(audio_files, len(audio_files))
+
+        print(random_files)
+        print(['target_duration', target_duration])
         
         # 循环添加音频片段直到达到目标时长
-        while current_duration < target_duration * 1000:  # 转换为毫秒
+        while current_duration < target_duration:  # 转换为毫秒
             # 随机选择一个音频文件
             audio_file = random.choice(random_files)
             
             # 加载音频文件
             audio = AudioSegment.from_wav(audio_file)
+            print(['while', audio_file])
             
             # 如果添加整个音频会超出目标时长，则只添加部分
-            remaining_duration = target_duration * 1000 - current_duration
-            if len(audio) > remaining_duration:
-                audio = audio[:int(remaining_duration)]
+
+            # remaining_duration = target_duration * 1000 - current_duration
+            # if len(audio) > remaining_duration:
+            #     audio = audio[:int(remaining_duration)]
             
             # 添加到合成音频
             combined += audio
-            current_duration += len(audio)
+            current_duration += 1
         
         return combined

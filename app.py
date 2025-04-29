@@ -28,16 +28,33 @@ def synthesize_audio():
         # 获取请求参数，如果没有提供则使用默认值
         duration = request.json.get('duration', None)  # 可选参数，指定音频长度
         contentStr = request.json.get('text', None)  # 可选参数，指定合成的文本内容
+        type = request.json.get('type', None)  # 可选参数，指定合成的文本内容
         if contentStr == None:
           return jsonify({
             "success": False,
             "message": "text is required"
           }), 500
         
-        # 合成音频
+        # 根据文本内容计算音频时长
         if duration is None:
-            duration = random.randint(2, 6)  # 随机生成3-5秒的音频
-        output_file = audio_processor.synthesize(duration)
+            # 判断是否为纯英文（只包含英文字母、空格和标点）
+            is_english = all(c.isascii() for c in contentStr)
+            # 判断是否为纯中文（每个字符都是中文）
+            is_chinese = all('\u4e00' <= c <= '\u9fff' for c in contentStr)
+            
+            if is_english:
+                # 英文按照单词数计算
+                words = len(contentStr.split())
+                duration = min(max(words * 1, 2), 6)  # 每个单词0.5秒，最短2秒，最长6秒
+            elif is_chinese:
+                # 中文按照字数计算
+                chars = len(contentStr)
+                duration = min(max(chars * 1, 2), 6)  # 每个字0.5秒，最短2秒，最长6秒
+            else:
+                # 混合内容按照字符数计算
+                chars = len(contentStr)
+                duration = min(max(chars * 1, 2), 6)  # 每个字符0.3秒，最短2秒，最长6秒
+        output_file = audio_processor.synthesize(duration, type)
         
         # 返回音频文件的URL
         file_url = f"/api/audio/{os.path.basename(output_file)}"
