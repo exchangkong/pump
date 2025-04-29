@@ -120,7 +120,7 @@ def index():
 if __name__ == '__main__':
     # 确保输出目录存在
     os.makedirs(output_dir, exist_ok=True)
-    print(f"服务已启动，请访问 http://localhost:9000 查看演示页面")
     #port = 9000
     port = int(os.environ.get('PORT', 9000))
+    print(f"服务已启动，请访问 http://localhost:%d 查看演示页面", port)
     app.run(debug=True, host='0.0.0.0', port=port)
